@@ -10,10 +10,40 @@ import threading
 import uuid
 import os
 import re
+import sqlite3
+from datetime import datetime
 
 load_dotenv()
 
 ENV_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+# =========================
+# DATABASE SETUP
+# =========================
+
+def get_db():
+    conn = sqlite3.connect('history.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_db()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_id TEXT NOT NULL,
+            website TEXT,
+            primary_keyword TEXT,
+            secondary_keyword TEXT,
+            generated_article TEXT,
+            status TEXT,
+            created_at TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
@@ -119,6 +149,15 @@ def run_generation_job(job_id, api_key, keywords_data):
                 "generated_article": article,
                 "status": "success"
             })
+            
+            # Save to DB
+            conn = get_db()
+            conn.execute(
+                'INSERT INTO history (job_id, website, primary_keyword, secondary_keyword, generated_article, status, created_at) VALUES (?,?,?,?,?,?,?)',
+                (job_id, website, primary, secondary, article, "success", datetime.now().isoformat())
+            )
+            conn.commit()
+            conn.close()
         except Exception as e:
             results.append({
                 "website": website,
@@ -127,6 +166,13 @@ def run_generation_job(job_id, api_key, keywords_data):
                 "generated_article": f"ERROR: {str(e)}",
                 "status": "error"
             })
+            conn = get_db()
+            conn.execute(
+                'INSERT INTO history (job_id, website, primary_keyword, secondary_keyword, generated_article, status, created_at) VALUES (?,?,?,?,?,?,?)',
+                (job_id, website, primary, secondary, f"ERROR: {str(e)}", "error", datetime.now().isoformat())
+            )
+            conn.commit()
+            conn.close()
 
         time.sleep(1)
 
@@ -142,6 +188,46 @@ def run_generation_job(job_id, api_key, keywords_data):
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "env_key_loaded": bool(ENV_API_KEY)})
+
+@app.route("/api/history", methods=["GET"])
+def get_history():
+    """All past generated articles"""
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 20))
+    offset = (page - 1) * per_page
+
+    conn = get_db()
+    total = conn.execute('SELECT COUNT(*) FROM history').fetchone()[0]
+    rows = conn.execute(
+        'SELECT * FROM history ORDER BY created_at DESC LIMIT ? OFFSET ?',
+        (per_page, offset)
+    ).fetchall()
+    conn.close()
+
+    return jsonify({
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "results": [dict(r) for r in rows]
+    })
+
+
+@app.route("/api/history/delete/<int:record_id>", methods=["DELETE"])
+def delete_history(record_id):
+    conn = get_db()
+    conn.execute('DELETE FROM history WHERE id = ?', (record_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Deleted"})
+
+
+@app.route("/api/history/clear", methods=["DELETE"])
+def clear_history():
+    conn = get_db()
+    conn.execute('DELETE FROM history')
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "History cleared"})
 
 
 @app.route("/api/generate", methods=["POST"])
