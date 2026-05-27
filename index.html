@@ -485,36 +485,19 @@
 
   <!-- STEP INDICATORS -->
   <div class="steps">
-    <div class="step active" id="step1-ind">
-      <div class="step-num">1</div> Configure
-    </div>
-    <div class="step" id="step2-ind">
-      <div class="step-num">2</div> Keywords
+    <div class="step active" id="step2-ind">
+      <div class="step-num">1</div> Keywords
     </div>
     <div class="step" id="step3-ind">
-      <div class="step-num">3</div> Generating
+      <div class="step-num">2</div> Generating
     </div>
     <div class="step" id="step4-ind">
-      <div class="step-num">4</div> Download
+      <div class="step-num">3</div> Download
     </div>
   </div>
 
-  <!-- STEP 1: CONFIG -->
-  <div class="card" id="config-section">
-    <div class="card-title"><span class="dot"></span> API Configuration</div>
-    <div class="form-row">
-      <div class="form-group" style="grid-column: span 2;">
-        <label>OpenAI API Key</label>
-        <input type="password" id="api-key" placeholder="sk-proj-..." />
-      </div>
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="nextToStep2()">Continue →</button>
-    </div>
-  </div>
-
-  <!-- STEP 2: KEYWORDS -->
-  <div class="card" id="keywords-section" style="display:none;">
+  <!-- STEP 1: KEYWORDS -->
+  <div class="card" id="keywords-section">
     <div class="card-title"><span class="dot"></span> Keywords Input</div>
 
     <!-- Upload Zone -->
@@ -618,33 +601,26 @@ window.onload = () => {
 
 // ---- NAVIGATION ----
 function setStep(n) {
-  [1,2,3,4].forEach(i => {
-    const el = document.getElementById(`step${i}-ind`);
+  // n=1 keywords, n=2 generating, n=3 download
+  const ids = ['step2-ind','step3-ind','step4-ind'];
+  ids.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
     el.classList.remove('active','done');
-    if (i < n) el.classList.add('done');
-    if (i === n) el.classList.add('active');
+    if (i+1 < n) el.classList.add('done');
+    if (i+1 === n) el.classList.add('active');
   });
 }
 
-function nextToStep2() {
-  const key = document.getElementById('api-key').value.trim();
-  if (!key) { showToast('Please enter your OpenAI API key', 'err'); return; }
-  document.getElementById('config-section').style.display = 'none';
-  document.getElementById('keywords-section').style.display = 'block';
-  setStep(2);
-}
+
 function goBack(step) {
-  if (step === 1) {
-    document.getElementById('keywords-section').style.display = 'none';
-    document.getElementById('config-section').style.display = 'block';
-    setStep(1);
-  }
+  // no-op, keywords is first step now
 }
 function startOver() {
   currentJobId = null;
   clearInterval(pollTimer);
   document.getElementById('results-section').style.display = 'none';
-  document.getElementById('config-section').style.display = 'block';
+  document.getElementById('keywords-section').style.display = 'block';
   document.getElementById('keywords-body').innerHTML = '';
   rowCounter = 0;
   addRow(); addRow(); addRow();
@@ -720,7 +696,6 @@ async function uploadExcel(file) {
 
 // ---- GENERATION ----
 async function startGeneration() {
-  const api_key = document.getElementById('api-key').value.trim();
   const keywords = getKeywords();
   if (!keywords.length) { showToast('Add at least one keyword', 'err'); return; }
 
@@ -728,7 +703,7 @@ async function startGeneration() {
     const r = await fetch(`${API_BASE}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key, keywords })
+      body: JSON.stringify({ api_key: '', keywords })
     });
     const data = await r.json();
     if (data.error) { showToast(data.error, 'err'); return; }
@@ -736,7 +711,7 @@ async function startGeneration() {
 
     document.getElementById('keywords-section').style.display = 'none';
     document.getElementById('progress-section').style.display = 'block';
-    setStep(3);
+    setStep(2);
     pollProgress();
   } catch(e) {
     showToast('Cannot connect to backend: ' + e.message, 'err');
@@ -777,7 +752,7 @@ async function cancelJob() {
   clearInterval(pollTimer);
   document.getElementById('progress-section').style.display = 'none';
   document.getElementById('keywords-section').style.display = 'block';
-  setStep(2);
+  setStep(1);
   showToast('Job cancelled', 'err');
 }
 
@@ -788,7 +763,7 @@ async function loadResults() {
 
   document.getElementById('progress-section').style.display = 'none';
   document.getElementById('results-section').style.display = 'block';
-  setStep(4);
+  setStep(3);
 
   const success = results.filter(x => x.status === 'success').length;
   const failed = results.length - success;
