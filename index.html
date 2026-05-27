@@ -477,7 +477,7 @@
   <!-- HEADER -->
   <header>
     <div class="logo-area">
-      <h1>⚡ SEO Content Factory</h1>
+      <h1>⚡PixelGlobal SEO Content Factory</h1>
       <p>Bulk article generation powered by GPT-4</p>
     </div>
     <span class="badge">BULK GENERATOR</span>
@@ -495,6 +495,10 @@
       <div class="step-num">3</div> Download
     </div>
   </div>
+
+  <div class="step" id="step5-ind" onclick="showHistory()" style="cursor:pointer;">
+  <div class="step-num">📋</div> History
+</div>
 
   <!-- STEP 1: KEYWORDS -->
   <div class="card" id="keywords-section">
@@ -583,6 +587,19 @@
     <div class="articles-list" id="articles-list"></div>
   </div>
 
+</div>
+
+<!-- HISTORY SECTION -->
+<div class="card" id="history-section" style="display:none;">
+  <div class="card-title"><span class="dot" style="background:var(--yellow);box-shadow:0 0 8px var(--yellow)"></span> Content History</div>
+  <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center;">
+    <input type="text" id="history-search" placeholder="Search by keyword..." oninput="filterHistory()" style="flex:1;" />
+    <button class="btn btn-danger" onclick="clearAllHistory()">🗑 Clear All</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('history-section').style.display='none'">✕ Close</button>
+  </div>
+  <div id="history-stats" class="text-muted" style="margin-bottom:16px;font-size:0.82rem;"></div>
+  <div id="history-list" class="articles-list"></div>
+  <div id="history-pagination" style="display:flex;gap:8px;margin-top:16px;justify-content:center;"></div>
 </div>
 
 <!-- TOAST -->
@@ -809,6 +826,99 @@ function toggleArt(header) {
 function downloadFile(type) {
   if (!currentJobId) return;
   window.location.href = `${API_BASE}/job/${currentJobId}/download/${type}`;
+}
+
+// ---- HISTORY ----
+let historyPage = 1;
+let allHistory = [];
+
+async function showHistory() {
+  document.getElementById('history-section').style.display = 'block';
+  document.getElementById('history-section').scrollIntoView({behavior:'smooth'});
+  await loadHistory(1);
+}
+
+async function loadHistory(page=1) {
+  historyPage = page;
+  try {
+    const r = await fetch(`${API_BASE}/history?page=${page}&per_page=20`);
+    const data = await r.json();
+    allHistory = data.results || [];
+    document.getElementById('history-stats').textContent = `Total: ${data.total} articles`;
+    renderHistory(allHistory);
+    renderPagination(data.total, page, 20);
+  } catch(e) {
+    showToast('History load failed', 'err');
+  }
+}
+
+function filterHistory() {
+  const q = document.getElementById('history-search').value.toLowerCase();
+  const filtered = allHistory.filter(r =>
+    r.primary_keyword?.toLowerCase().includes(q) ||
+    r.website?.toLowerCase().includes(q) ||
+    r.secondary_keyword?.toLowerCase().includes(q)
+  );
+  renderHistory(filtered);
+}
+
+function renderHistory(items) {
+  const list = document.getElementById('history-list');
+  if (!items.length) { list.innerHTML = '<p class="text-muted" style="text-align:center;padding:24px;">No records found</p>'; return; }
+  list.innerHTML = '';
+  items.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'article-card';
+    const date = new Date(r.created_at).toLocaleString();
+    div.innerHTML = `
+      <div class="article-header" onclick="toggleArt(this)">
+        <div class="article-meta">
+          <span class="art-num">#${r.id}</span>
+          <span class="art-keyword">${r.primary_keyword}</span>
+          ${r.website ? `<span style="color:var(--muted);font-size:0.78rem;">${r.website}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <span style="color:var(--muted);font-size:0.75rem;">${date}</span>
+          <span class="art-status ${r.status==='success'?'ok':'err'}">${r.status==='success'?'✓':'✕'}</span>
+          <button class="del-btn" onclick="event.stopPropagation();deleteRecord(${r.id})">✕</button>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="article-body">
+        <pre>${r.generated_article}</pre>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function renderPagination(total, page, perPage) {
+  const pages = Math.ceil(total / perPage);
+  const div = document.getElementById('history-pagination');
+  div.innerHTML = '';
+  for (let i = 1; i <= pages; i++) {
+    const btn = document.createElement('button');
+    btn.className = `btn btn-ghost`;
+    btn.style.padding = '6px 12px';
+    btn.style.fontSize = '0.8rem';
+    if (i === page) btn.style.borderColor = 'var(--accent)';
+    btn.textContent = i;
+    btn.onclick = () => loadHistory(i);
+    div.appendChild(btn);
+  }
+}
+
+async function deleteRecord(id) {
+  await fetch(`${API_BASE}/history/delete/${id}`, {method:'DELETE'});
+  await loadHistory(historyPage);
+  showToast('Deleted', 'ok');
+}
+
+async function clearAllHistory() {
+  if (!confirm('Saari history delete karni hai?')) return;
+  await fetch(`${API_BASE}/history/clear`, {method:'DELETE'});
+  await loadHistory(1);
+  showToast('History cleared', 'ok');
 }
 
 // ---- TOAST ----
