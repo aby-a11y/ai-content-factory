@@ -9,8 +9,7 @@ import time
 import threading
 import uuid
 import os
-import subprocess
-import tempfile
+import re
 
 load_dotenv()
 
@@ -231,6 +230,9 @@ def download_excel(job_id):
 
 @app.route("/api/job/<job_id>/download/word", methods=["GET"])
 def download_word(job_id):
+    from docx import Document as DocxDocument
+    from docx.shared import Pt, RGBColor
+
     job = jobs.get(job_id)
     if not job:
         return jsonify({"error": "Job not found"}), 404
@@ -238,108 +240,66 @@ def download_word(job_id):
         return jsonify({"error": "No results yet"}), 400
 
     results = job["results"]
+    doc = DocxDocument()
 
-    # Windows compatible temp path
-    tmp_dir = tempfile.gettempdir()
-    output_docx = os.path.join(tmp_dir, f"seo_{job_id[:8]}.docx")
-
-    js_lines = []
-    js_lines.append("""
-const { Document, Packer, Paragraph, TextRun, HeadingLevel, PageBreak } = require('docx');
-const fs = require('fs');
-const sections_children = [];
-""")
+    style = doc.styles['Normal']
+    style.font.name = 'Calibri'
+    style.font.size = Pt(12)
 
     for i, r in enumerate(results):
-        article_text = r.get("generated_article", "").replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${")
-        primary = r.get("primary_keyword", "").replace("'", "\\'")
-        secondary = r.get("secondary_keyword", "").replace("'", "\\'")
-        website = r.get("website", "").replace("'", "\\'")
-
         if i > 0:
-            js_lines.append("sections_children.push(new Paragraph({ children: [new PageBreak()] }));")
+            doc.add_page_break()
 
-        js_lines.append(f"""
-sections_children.push(new Paragraph({{
-  heading: HeadingLevel.HEADING_1,
-  children: [new TextRun({{ text: 'Article {i+1}: {primary}', bold: true }})]
-}}));
-sections_children.push(new Paragraph({{ children: [new TextRun({{ text: 'Website: ', bold: true }}), new TextRun('{website}')] }}));
-sections_children.push(new Paragraph({{ children: [new TextRun({{ text: 'Primary Keyword: ', bold: true }}), new TextRun('{primary}')] }}));
-sections_children.push(new Paragraph({{ children: [new TextRun({{ text: 'Secondary Keyword: ', bold: true }}), new TextRun('{secondary}')] }}));
-sections_children.push(new Paragraph({{ children: [] }}));
-""")
+        primary = r.get("primary_keyword", "")
+        secondary = r.get("secondary_keyword", "")
+        website = r.get("website", "")
+        article = r.get("generated_article", "")
 
-        lines = article_text.split("\\n")
-        js_lines.append("const article_lines_{i} = {lines};".format(i=i, lines=json.dumps(lines)))
-        js_lines.append(f"""
-for (const line of article_lines_{i}) {{
-  const trimmed = line.trim();
-  if (trimmed.startsWith('## ')) {{
-    sections_children.push(new Paragraph({{ heading: HeadingLevel.HEADING_2, children: [new TextRun(trimmed.replace(/^## /, ''))] }}));
-  }} else if (trimmed.startsWith('# ')) {{
-    sections_children.push(new Paragraph({{ heading: HeadingLevel.HEADING_1, children: [new TextRun(trimmed.replace(/^# /, ''))] }}));
-  }} else if (trimmed === '') {{
-    sections_children.push(new Paragraph({{ children: [] }}));
-  }} else {{
-    sections_children.push(new Paragraph({{ children: [new TextRun(trimmed.replace(/\\*\\*(.*?)\\*\\*/g, '$1'))] }}));
-  }}
-}}
-""")
+        h = doc.add_heading(f'Article {i+1}: {primary}', level=1)
+        h.runs[0].font.color.rgb = RGBColor(0x1F, 0x4E, 0x79)
 
-    # Windows path mein backslash escape karna zaroori hai
-    escaped_output = output_docx.replace("\\", "\\\\")
-    js_lines.append(f"""
-const doc = new Document({{
-  styles: {{
-    default: {{ document: {{ run: {{ font: "Calibri", size: 24 }} }} }},
-    paragraphStyles: [
-      {{ id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
-        run: {{ size: 36, bold: true, font: "Calibri", color: "1F4E79" }},
-        paragraph: {{ spacing: {{ before: 360, after: 120 }}, outlineLevel: 0 }} }},
-      {{ id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
-        run: {{ size: 28, bold: true, font: "Calibri", color: "2E74B5" }},
-        paragraph: {{ spacing: {{ before: 240, after: 80 }}, outlineLevel: 1 }} }}
-    ]
-  }},
-  sections: [{{
-    properties: {{ page: {{ size: {{ width: 12240, height: 15840 }}, margin: {{ top: 1440, right: 1440, bottom: 1440, left: 1440 }} }} }},
-    children: sections_children
-  }}]
-}});
+        def add_meta(label, value):
+            p = doc.add_paragraph()
+            p.add_run(label).bold = True
+            p.add_run(value)
 
-Packer.toBuffer(doc).then(buffer => {{
-  fs.writeFileSync('{escaped_output}', buffer);
-  console.log('DONE');
-}});
-""")
+        add_meta("Website: ", website)
+        add_meta("Primary Keyword: ", primary)
+        add_meta("Secondary Keyword: ", secondary)
+        doc.add_paragraph()
 
-    js_script = "\n".join(js_lines)
+        for line in article.split('\n'):
+            stripped = line.strip()
+            if not stripped:
+                doc.add_paragraph()
+                continue
+            if stripped.startswith('### '):
+                doc.add_heading(stripped[4:], level=3)
+            elif stripped.startswith('## '):
+                h = doc.add_heading(stripped[3:], level=2)
+                h.runs[0].font.color.rgb = RGBColor(0x2E, 0x74, 0xB5)
+            elif stripped.startswith('# '):
+                h = doc.add_heading(stripped[2:], level=1)
+                h.runs[0].font.color.rgb = RGBColor(0x1F, 0x4E, 0x79)
+            else:
+                p = doc.add_paragraph()
+                parts = re.split(r'(\*\*.*?\*\*)', stripped)
+                for part in parts:
+                    if part.startswith('**') and part.endswith('**'):
+                        p.add_run(part[2:-2]).bold = True
+                    else:
+                        p.add_run(part)
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False, dir=tmp_dir) as f:
-        f.write(js_script)
-        script_path = f.name
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
 
-    try:
-        result = subprocess.run(
-            ["node", script_path],
-            capture_output=True, text=True, timeout=60
-        )
-        if result.returncode != 0:
-            return jsonify({"error": "DOCX generation failed", "detail": result.stderr}), 500
-
-        return send_file(
-            output_docx,
-            as_attachment=True,
-            download_name=f"seo_articles_{job_id[:8]}.docx",
-            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
-    finally:
-        try:
-            os.unlink(script_path)
-        except:
-            pass
-
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=f"seo_articles_{job_id[:8]}.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
 
 @app.route("/api/upload-excel", methods=["POST"])
 def upload_excel():
