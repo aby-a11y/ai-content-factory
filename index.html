@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bulk SEO Content Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1f2535;
+    --accent: #4f8ef7;
+    --accent2: #7c5cfc;
+    --green: #22d3a0;
+    --red: #f75c5c;
+    --yellow: #f7c948;
+    --text: #e8ecf4;
+    --muted: #6b7590;
+    --glow: 0 0 40px rgba(79,142,247,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,142,247,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,142,247,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 56px;
+  }
+  .logo-area h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(120deg, #e8ecf4 30%, #4f8ef7);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+  .logo-area p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-top: 4px;
+  }
+  .badge {
+    background: linear-gradient(135deg, rgba(79,142,247,0.15), rgba(124,92,252,0.15));
+    border: 1px solid rgba(79,142,247,0.3);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-family: 'Syne', sans-serif;
+    letter-spacing: 0.05em;
+  }
+
+  /* PANELS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(79,142,247,0.5), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .card:hover::before { opacity: 1; }
+  .card:hover { border-color: rgba(79,142,247,0.25); }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* STEP INDICATOR */
+  .steps {
+    display: flex;
+    gap: 0;
+    margin-bottom: 32px;
+  }
+  .step {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 0.82rem;
+    color: var(--muted);
+    transition: all 0.3s;
+    cursor: default;
+  }
+  .step:first-child { border-radius: 10px 0 0 10px; }
+  .step:last-child { border-radius: 0 10px 10px 0; }
+  .step + .step { border-left: none; }
+  .step.active {
+    background: linear-gradient(135deg, rgba(79,142,247,0.12), rgba(124,92,252,0.08));
+    border-color: rgba(79,142,247,0.4);
+    color: var(--text);
+  }
+  .step.done { color: var(--green); border-color: rgba(34,211,160,0.3); }
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--border);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step.active .step-num { background: var(--accent); color: #fff; }
+  .step.done .step-num { background: var(--green); color: #0a0c10; }
+
+  /* FORM */
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 8px; }
+  .form-group label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  input[type="text"], input[type="password"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+  input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,142,247,0.12);
+  }
+
+  /* KEYWORD TABLE */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  thead tr { background: var(--surface2); }
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 11px 16px;
+    border-bottom: 1px solid rgba(31,37,53,0.6);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(79,142,247,0.04); }
+  td input {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    outline: none;
+    width: 100%;
+    padding: 2px 0;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  td input:focus { border-bottom-color: var(--accent); }
+  .del-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: color 0.2s, background 0.2s;
+  }
+  .del-btn:hover { color: var(--red); background: rgba(247,92,92,0.1); }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+    margin-top: 8px;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(79,142,247,0.06); }
+  .upload-zone .icon { font-size: 2rem; margin-bottom: 10px; }
+  .upload-zone p { color: var(--muted); font-size: 0.88rem; }
+  .upload-zone strong { color: var(--accent); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(79,142,247,0.3);
+  }
+  .btn-primary:hover { box-shadow: 0 6px 28px rgba(79,142,247,0.45); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(79,142,247,0.3); }
+  .btn-danger {
+    background: rgba(247,92,92,0.1);
+    color: var(--red);
+    border: 1px solid rgba(247,92,92,0.25);
+  }
+  .btn-danger:hover { background: rgba(247,92,92,0.2); }
+  .btn-green {
+    background: linear-gradient(135deg, rgba(34,211,160,0.15), rgba(34,211,160,0.08));
+    color: var(--green);
+    border: 1px solid rgba(34,211,160,0.3);
+  }
+  .btn-green:hover { background: rgba(34,211,160,0.2); box-shadow: 0 0 20px rgba(34,211,160,0.15); }
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 20px;
+  }
+
+  /* PROGRESS */
+  #progress-section { display: none; }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .progress-bar-wrap {
+    background: var(--surface2);
+    border-radius: 100px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .progress-bar {
+    height: 100%;
+    border-radius: 100px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.4s ease;
+    box-shadow: 0 0 12px rgba(79,142,247,0.5);
+  }
+  .progress-label {
+    font-size: 0.82rem;
+    color: var(--muted);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .progress-label .kw {
+    color: var(--accent);
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+  }
+  .pulse {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.4s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,211,160,0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(34,211,160,0); }
+  }
+
+  /* RESULTS */
+  #results-section { display: none; }
+  .result-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    text-align: center;
+  }
+  .stat-box .num {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+  }
+  .stat-box .lbl { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  .stat-box.success .num { color: var(--green); }
+  .stat-box.failed .num { color: var(--red); }
+  .stat-box.total .num { color: var(--accent); }
+
+  .articles-list { display: flex; flex-direction: column; gap: 12px; }
+  .article-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .article-card:hover { border-color: rgba(79,142,247,0.25); }
+  .article-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .article-meta { display: flex; align-items: center; gap: 12px; }
+  .art-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    color: var(--muted);
+    background: var(--border);
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .art-keyword { font-weight: 500; font-size: 0.9rem; }
+  .art-status {
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+  .art-status.ok { background: rgba(34,211,160,0.12); color: var(--green); }
+  .art-status.err { background: rgba(247,92,92,0.12); color: var(--red); }
+  .chevron { color: var(--muted); font-size: 0.8rem; transition: transform 0.2s; }
+  .article-body {
+    display: none;
+    padding: 0 18px 18px;
+    border-top: 1px solid var(--border);
+  }
+  .article-body.open { display: block; }
+  .article-body pre {
+    white-space: pre-wrap;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: #c8d0e0;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-top: 14px;
+  }
+
+  /* TOAST */
+  #toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    font-size: 0.88rem;
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s;
+    max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.ok { border-color: rgba(34,211,160,0.4); color: var(--green); }
+  #toast.err { border-color: rgba(247,92,92,0.4); color: var(--red); }
+
+  /* MISC */
+  .sep { height: 1px; background: var(--border); margin: 24px 0; }
+  .text-muted { color: var(--muted); font-size: 0.84rem; }
+  .mt-2 { margin-top: 8px; }
+  .flex-end { display: flex; justify-content: flex-end; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-area">
+      <h1>⚡ SEO Content Factory</h1>
+      <p>Bulk article generation powered by GPT-4</p>
+    </div>
+    <span class="badge">BULK GENERATOR</span>
+  </header>
+
+  <!-- STEP INDICATORS -->
+  <div class="steps">
+    <div class="step active" id="step1-ind">
+      <div class="step-num">1</div> Configure
+    </div>
+    <div class="step" id="step2-ind">
+      <div class="step-num">2</div> Keywords
+    </div>
+    <div class="step" id="step3-ind">
+      <div class="step-num">3</div> Generating
+    </div>
+    <div class="step" id="step4-ind">
+      <div class="step-num">4</div> Download
+    </div>
+  </div>
+
+  <!-- STEP 1: CONFIG -->
+  <div class="card" id="config-section">
+    <div class="card-title"><span class="dot"></span> API Configuration</div>
+    <div class="form-row">
+      <div class="form-group" style="grid-column: span 2;">
+        <label>OpenAI API Key</label>
+        <input type="password" id="api-key" placeholder="sk-proj-..." />
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="nextToStep2()">Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: KEYWORDS -->
+  <div class="card" id="keywords-section" style="display:none;">
+    <div class="card-title"><span class="dot"></span> Keywords Input</div>
+
+    <!-- Upload Zone -->
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()"
+         ondragover="event.preventDefault(); this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="handleDrop(event)">
+      <div class="icon">📊</div>
+      <p><strong>Click or drag</strong> your Excel file here</p>
+      <p class="mt-2" style="font-size:0.76rem;">Columns: Website | Primary Keywords | Secondary Keywords</p>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none;" onchange="uploadExcel(this.files[0])"/>
+
+    <div class="sep"></div>
+
+    <!-- Manual table -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <span class="text-muted">Or enter keywords manually:</span>
+      <button class="btn btn-ghost" onclick="addRow()" style="font-size:0.8rem;padding:8px 14px;">+ Add Row</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="keywords-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Website</th>
+            <th>Primary Keyword</th>
+            <th>Secondary Keyword</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="keywords-body">
+          <!-- rows added by JS -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goBack(1)">← Back</button>
+      <button class="btn btn-primary" onclick="startGeneration()">
+        ⚡ Start Generating
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 3: PROGRESS -->
+  <div class="card" id="progress-section">
+    <div class="card-title"><span class="dot"></span> Generating Articles</div>
+    <div class="progress-header">
+      <span id="progress-text" class="text-muted">Initializing...</span>
+      <span id="progress-pct" style="font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; color:var(--accent);">0%</span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+    </div>
+    <div class="progress-label">
+      <div class="pulse" id="pulse-dot"></div>
+      <span>Processing: </span>
+      <span class="kw" id="current-kw">—</span>
+    </div>
+    <div class="btn-row" style="margin-top:24px;">
+      <button class="btn btn-danger" onclick="cancelJob()">✕ Cancel</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: RESULTS -->
+  <div class="card" id="results-section">
+    <div class="card-title"><span class="dot" style="background:var(--green);box-shadow:0 0 8px var(--green)"></span> Articles Generated</div>
+
+    <div class="result-stats">
+      <div class="stat-box total"><div class="num" id="stat-total">0</div><div class="lbl">Total</div></div>
+      <div class="stat-box success"><div class="num" id="stat-success">0</div><div class="lbl">Success</div></div>
+      <div class="stat-box failed"><div class="num" id="stat-failed">0</div><div class="lbl">Failed</div></div>
+    </div>
+
+    <div class="btn-row" style="margin-bottom:24px;">
+      <button class="btn btn-green" onclick="downloadFile('word')">⬇ Download Word (.docx)</button>
+      <button class="btn btn-ghost" onclick="downloadFile('excel')">⬇ Download Excel (.xlsx)</button>
+      <button class="btn btn-ghost" onclick="startOver()" style="margin-left:auto;">↺ New Batch</button>
+    </div>
+
+    <div class="articles-list" id="articles-list"></div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+const API_BASE = "http://localhost:5000/api";
+let currentJobId = null;
+let pollTimer = null;
+let rowCounter = 0;
+
+// ---- INIT ----
+window.onload = () => {
+  addRow(); addRow(); addRow();
+};
+
+// ---- NAVIGATION ----
+function setStep(n) {
+  [1,2,3,4].forEach(i => {
+    const el = document.getElementById(`step${i}-ind`);
+    el.classList.remove('active','done');
+    if (i < n) el.classList.add('done');
+    if (i === n) el.classList.add('active');
+  });
+}
+
+function nextToStep2() {
+  const key = document.getElementById('api-key').value.trim();
+  if (!key) { showToast('Please enter your OpenAI API key', 'err'); return; }
+  document.getElementById('config-section').style.display = 'none';
+  document.getElementById('keywords-section').style.display = 'block';
+  setStep(2);
+}
+function goBack(step) {
+  if (step === 1) {
+    document.getElementById('keywords-section').style.display = 'none';
+    document.getElementById('config-section').style.display = 'block';
+    setStep(1);
+  }
+}
+function startOver() {
+  currentJobId = null;
+  clearInterval(pollTimer);
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('config-section').style.display = 'block';
+  document.getElementById('keywords-body').innerHTML = '';
+  rowCounter = 0;
+  addRow(); addRow(); addRow();
+  setStep(1);
+}
+
+// ---- ROWS ----
+function addRow(w='', pk='', sk='') {
+  rowCounter++;
+  const n = rowCounter;
+  const tbody = document.getElementById('keywords-body');
+  const tr = document.createElement('tr');
+  tr.id = `row-${n}`;
+  tr.innerHTML = `
+    <td style="color:var(--muted);font-size:0.8rem;">${tbody.children.length+1}</td>
+    <td><input type="text" placeholder="example.com" value="${esc(w)}" /></td>
+    <td><input type="text" placeholder="primary keyword" value="${esc(pk)}" /></td>
+    <td><input type="text" placeholder="secondary keyword" value="${esc(sk)}" /></td>
+    <td><button class="del-btn" onclick="delRow('row-${n}')">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  renumberRows();
+}
+function delRow(id) {
+  document.getElementById(id)?.remove();
+  renumberRows();
+}
+function renumberRows() {
+  document.querySelectorAll('#keywords-body tr').forEach((tr, i) => {
+    tr.querySelector('td:first-child').textContent = i + 1;
+  });
+}
+function esc(s) { return s.replace(/"/g,'&quot;'); }
+
+function getKeywords() {
+  const rows = document.querySelectorAll('#keywords-body tr');
+  const kws = [];
+  rows.forEach(tr => {
+    const inputs = tr.querySelectorAll('input');
+    const w = inputs[0]?.value.trim();
+    const pk = inputs[1]?.value.trim();
+    const sk = inputs[2]?.value.trim();
+    if (pk) kws.push({ website: w||'', primary_keyword: pk, secondary_keyword: sk||'' });
+  });
+  return kws;
+}
+
+// ---- EXCEL UPLOAD ----
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadExcel(file);
+}
+
+async function uploadExcel(file) {
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch(`${API_BASE}/upload-excel`, { method: 'POST', body: fd });
+    const data = await r.json();
+    if (data.error) { showToast(data.error, 'err'); return; }
+    // Clear and populate table
+    document.getElementById('keywords-body').innerHTML = '';
+    rowCounter = 0;
+    data.keywords.forEach(k => addRow(k.website, k.primary_keyword, k.secondary_keyword));
+    showToast(`✓ Loaded ${data.count} keywords`, 'ok');
+  } catch(e) {
+    showToast('Upload failed: ' + e.message, 'err');
+  }
+}
+
+// ---- GENERATION ----
+async function startGeneration() {
+  const api_key = document.getElementById('api-key').value.trim();
+  const keywords = getKeywords();
+  if (!keywords.length) { showToast('Add at least one keyword', 'err'); return; }
+
+  try {
+    const r = await fetch(`${API_BASE}/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key, keywords })
+    });
+    const data = await r.json();
+    if (data.error) { showToast(data.error, 'err'); return; }
+    currentJobId = data.job_id;
+
+    document.getElementById('keywords-section').style.display = 'none';
+    document.getElementById('progress-section').style.display = 'block';
+    setStep(3);
+    pollProgress();
+  } catch(e) {
+    showToast('Cannot connect to backend: ' + e.message, 'err');
+  }
+}
+
+function pollProgress() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    if (!currentJobId) return;
+    try {
+      const r = await fetch(`${API_BASE}/job/${currentJobId}`);
+      const data = await r.json();
+      updateProgress(data);
+      if (data.status === 'completed' || data.status === 'cancelled') {
+        clearInterval(pollTimer);
+        if (data.status === 'completed') loadResults();
+      }
+    } catch(e) { /* ignore */ }
+  }, 1500);
+}
+
+function updateProgress(data) {
+  const p = data.progress;
+  const pct = p.total ? Math.round((p.current / p.total) * 100) : 0;
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-text').textContent = `Article ${p.current} of ${p.total}`;
+  document.getElementById('current-kw').textContent = p.current_keyword || '—';
+  if (data.status !== 'running') {
+    document.getElementById('pulse-dot').style.display = 'none';
+  }
+}
+
+async function cancelJob() {
+  if (!currentJobId) return;
+  await fetch(`${API_BASE}/job/${currentJobId}/cancel`, { method: 'POST' });
+  clearInterval(pollTimer);
+  document.getElementById('progress-section').style.display = 'none';
+  document.getElementById('keywords-section').style.display = 'block';
+  setStep(2);
+  showToast('Job cancelled', 'err');
+}
+
+async function loadResults() {
+  const r = await fetch(`${API_BASE}/job/${currentJobId}/results`);
+  const data = await r.json();
+  const results = data.results || [];
+
+  document.getElementById('progress-section').style.display = 'none';
+  document.getElementById('results-section').style.display = 'block';
+  setStep(4);
+
+  const success = results.filter(x => x.status === 'success').length;
+  const failed = results.length - success;
+  document.getElementById('stat-total').textContent = results.length;
+  document.getElementById('stat-success').textContent = success;
+  document.getElementById('stat-failed').textContent = failed;
+
+  const list = document.getElementById('articles-list');
+  list.innerHTML = '';
+  results.forEach((art, i) => {
+    const div = document.createElement('div');
+    div.className = 'article-card';
+    div.innerHTML = `
+      <div class="article-header" onclick="toggleArt(this)">
+        <div class="article-meta">
+          <span class="art-num">#${i+1}</span>
+          <span class="art-keyword">${art.primary_keyword}</span>
+          ${art.website ? `<span style="color:var(--muted);font-size:0.78rem;">${art.website}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <span class="art-status ${art.status==='success'?'ok':'err'}">${art.status==='success'?'✓ Success':'✕ Error'}</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="article-body">
+        <pre>${art.generated_article}</pre>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  showToast(`✓ ${success} articles generated!`, 'ok');
+}
+
+function toggleArt(header) {
+  const body = header.nextElementSibling;
+  const chev = header.querySelector('.chevron');
+  body.classList.toggle('open');
+  chev.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : '';
+}
+
+// ---- DOWNLOAD ----
+function downloadFile(type) {
+  if (!currentJobId) return;
+  window.location.href = `${API_BASE}/job/${currentJobId}/download/${type}`;
+}
+
+// ---- TOAST ----
+let toastTimer;
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 3500);
+}
+</script>
+</body>
+</html>
